@@ -103,19 +103,11 @@ def str_to_func(func_str):
 # f_t = fourier_sin_series_to_callable(a0, w0, terms)
 # print(f_t(10))
 
-def pick_gain(a0, terms, user_gain=0.2, auto=True):
-    """
-    Compute a safe-ish gain. Uses a conservative peak bound:
-        |a0| + SUM|Ak|
-    """
-    if not auto:
-        return float(user_gain)
-
+def pick_gain(a0, terms, user_gain=0.2):
     peak_bound = abs(a0) + sum(abs(Ak) for _, Ak, _ in terms)
     if peak_bound <= 0:
         return float(user_gain)
 
-    # Keep some headroom
     safe = 0.95 / peak_bound
     return float(min(user_gain, safe))
 
@@ -133,7 +125,7 @@ def main():
     print(w0)
     print(terms)
 
-    gain = pick_gain(a0, terms, user_gain=float(0.1), auto=(False))
+    gain = pick_gain(a0, terms, user_gain=float(0.1))
 
     sr = 48000
     block = 1024
