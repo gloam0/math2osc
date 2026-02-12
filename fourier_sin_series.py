@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import sounddevice as sd
 import numpy as np
 from numpy.fft import rfft
 
@@ -91,9 +92,8 @@ def str_to_func(func_str):
         "sqrt": np.sqrt,
         "abs": np.abs,
     }
-    allowed = {"np": np}
-    code = compile(args.func, "<args.func>", "eval")
-    func = lambda t: eval(code, {"__builtins__": {}}, {"t": t, **SAFE_FUNCS, "np": np})
+    code = compile(func_str, "<args.func>", "eval")
+    func = lambda t: eval(code, {"__builtins__": {}}, {"t": t, **np_funcs_map, "np": np})
     return func
 
 # a0, w0, terms = fourier_sin_series(lambda t: np.sin(t+np.sin(2*t)), T=2*np.pi, N=16384, K=10)
@@ -103,19 +103,70 @@ def str_to_func(func_str):
 # f_t = fourier_sin_series_to_callable(a0, w0, terms)
 # print(f_t(10))
 
-if __name__ == "__main__":
+def pick_gain(a0, terms, user_gain=0.2, auto=True):
+    """
+    Compute a safe-ish gain. Uses a conservative peak bound:
+        |a0| + SUM|Ak|
+    """
+    if not auto:
+        return float(user_gain)
+
+    peak_bound = abs(a0) + sum(abs(Ak) for _, Ak, _ in terms)
+    if peak_bound <= 0:
+        return float(user_gain)
+
+    # Keep some headroom
+    safe = 0.95 / peak_bound
+    return float(min(user_gain, safe))
+
+
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("func")
-    
-    args = parser.parse_args()
+    parser.add_argument("--hz", type=float, default=220.0)
 
-    allowed = {"np": np}
-    code = compile(args.func, "<args.func>", "eval")
-    f = lambda t: eval(code, {"__builtins__": {}}, {"t": t, **allowed})
+    args = parser.parse_args()
+    f = str_to_func(args.func)
 
     a0, w0, terms = fourier_sin_series(f, T=2*np.pi, N=16384, K=10)
     print(a0)
     print(w0)
     print(terms)
-    f_t = fourier_sin_series_to_callable(a0, w0, terms)
-    print(f_t(10))
+
+    gain = pick_gain(a0, terms, user_gain=float(0.1), auto=(False))
+
+    sr = 48000
+    block = 1024
+    f0 = args.hz
+
+    dtheta = 2.0 * np.pi * f0 / sr
+    theta0 = 0.0
+
+    def callback(out, frames, time, status):
+        nonlocal theta0
+        if status:
+            pass
+
+        n = np.arange(frames, dtype=float)
+        theta = theta0 + dtheta * n
+        y = f(theta)*gain
+        y = np.clip(y, -1.0, 1.0)
+        out[:] = y.reshape(-1, 1)
+        theta0 = (theta0 + dtheta * frames) % (2.0 * np.pi)
+
+    try:
+        with sd.OutputStream(
+            samplerate=sr,
+            channels=1,
+            dtype="float32",
+            blocksize=block,
+            callback=callback,
+        ):
+            while True:
+                sd.sleep(1000)
+    except KeyboardInterrupt:
+        print("\nstopped")
+
+
+if __name__ == "__main__":
+    main()
