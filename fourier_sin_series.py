@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
+import argparse
 import numpy as np
 from numpy.fft import rfft
 
 
 def fourier_sin_series(func, T=2*np.pi, N=16384, K=10):
     """
-    Approximate a periodic function f(t) by a sine series using FFT.
+    Approximate a periodic f(t) by a sine series using FFT
 
     Samples f(t) uniformly on [0,T) and computes the FFT, returning coeffs
     for the approximation:
@@ -79,9 +80,42 @@ def fourier_sin_series_to_callable(a0, w0, terms, tolerance=1e-12):
     return approx
 
 
-a0, w0, terms = fourier_sin_series(lambda t: np.sin(t+np.sin(2*t)), T=2*np.pi, N=16384, K=10)
-print(a0)
-print(w0)
-print(terms)
-f_t = fourier_sin_series_to_callable(a0, w0, terms)
-print(f_t(10))
+def str_to_func(func_str):
+    np_funcs_map = {
+        "pi": np.pi,
+        "sin": np.sin,
+        "cos": np.cos,
+        "tan": np.tan,
+        "exp": np.exp,
+        "log": np.log,
+        "sqrt": np.sqrt,
+        "abs": np.abs,
+    }
+    allowed = {"np": np}
+    code = compile(args.func, "<args.func>", "eval")
+    func = lambda t: eval(code, {"__builtins__": {}}, {"t": t, **SAFE_FUNCS, "np": np})
+    return func
+
+# a0, w0, terms = fourier_sin_series(lambda t: np.sin(t+np.sin(2*t)), T=2*np.pi, N=16384, K=10)
+# print(a0)
+# print(w0)
+# print(terms)
+# f_t = fourier_sin_series_to_callable(a0, w0, terms)
+# print(f_t(10))
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("func")
+    
+    args = parser.parse_args()
+
+    allowed = {"np": np}
+    code = compile(args.func, "<args.func>", "eval")
+    f = lambda t: eval(code, {"__builtins__": {}}, {"t": t, **allowed})
+
+    a0, w0, terms = fourier_sin_series(f, T=2*np.pi, N=16384, K=10)
+    print(a0)
+    print(w0)
+    print(terms)
+    f_t = fourier_sin_series_to_callable(a0, w0, terms)
+    print(f_t(10))
