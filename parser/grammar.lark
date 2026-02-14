@@ -1,0 +1,53 @@
+?start: expr
+
+?expr: expr "+" term   -> add
+     | expr "-" term   -> sub
+     | term
+
+?term: term "*" power   -> mul
+     | term "/" power   -> div
+     | power
+
+?power: atom "^" power -> exp
+      | "-" power      -> neg
+      | "+" power
+      | atom
+
+?atom: NUMBER          -> num
+     | PI              -> pi
+     | TAU             -> tau
+     | E               -> e
+     | SR              -> sr
+     | DT              -> dt
+     | "(" expr ")"
+     | func_call
+     | sum_call
+     | NAME            -> var
+
+func_call: FUNC "(" expr ")" -> call
+
+# sum(i=lo..hi [step s], body)
+sum_call: "SUM" "(" NAME "=" expr ".." expr step_clause? "," expr ")"
+step_clause: "step" expr
+
+FUNC.10: /(sin|cos|tan|cot|sec|csc|asin|acos|atan|acot|asec|acsc
+         |sinh|cosh|tanh|coth|sech|csch|asinh|acosh|atanh
+         |square|saw|tri)/x
+
+SUM.10: "sum"
+
+PI.10: "pi"
+TAU.10: "tau"  # 2*pi
+E.10: "e"
+
+SR.10: "sr"  # sample rate
+DT.10: "dt"  # 1/sr
+
+%import common.CNAME -> NAME  # ("_"|LETTER) ("_"|LETTER|DIGIT)*
+%import common.NUMBER         # NUMBER: FLOAT | INT
+%import common.SH_COMMENT     # /#[^\n]*/
+%ignore SH_COMMENT
+%import common.WS_INLINE      # (" "|/\t/)+
+%ignore WS_INLINE
+%import common.WS             # /[ \t\f\r\n]/+
+%ignore WS
