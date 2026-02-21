@@ -1,39 +1,29 @@
 ?start: expr
 
-?expr: expr "+" term   -> add
-     | expr "-" term   -> sub
+?expr: expr "+" term     -> add
+     | expr "-" term     -> sub
      | term
 
-?term: term "*" power   -> mul
-     | term "/" power   -> div
+?term: term "*" power     -> mul
+     | term "/" power     -> div
      | power
 
-?power: atom "^" power -> exp
-      | "-" power      -> neg
-      | "+" power      -> pos
+?power: atom "^" power   -> exp
+      | "-" power        -> neg
+      | "+" power        -> pos
       | atom
 
-?atom: NUMBER          -> num
-     | CONSTANT        -> constant
+?atom: NUMBER            -> num
+     | sum_call
+     | NAME "(" args ")" -> func_call
+     | NAME              -> symbol
      | "(" expr ")"
-     | func_call
-     # | sum_call
-
-func_call: FUNC "(" args ")"
 args: expr ("," expr)*
 
-# sum(i=lo..hi [step s], body)
-# sum_call: "SUM" "(" NAME "=" expr ".." expr step_clause? "," expr ")"
-# step_clause: "step" expr
-
-FUNC.10: /(sin|cos|tan|cot|sec|csc|asin|acos|atan|acot|asec|acsc
-         |sinh|cosh|tanh|coth|sech|csch|asinh|acosh|atanh
-         |square|saw|tri)/x
-
-# pi, tau, e, sample rate, dt (1/sr)
-CONSTANT.10: /(pi|tau|e|sr|dt)/x
-
-SUM.10: "sum"
+# sum(k=lo:hi, step=s, body)
+sum_call: NAME "(" sum_range sum_step? "," expr ")"
+sum_range: NAME "=" expr ":" expr
+sum_step: "," NAME "=" expr
 
 %import common.CNAME -> NAME  # ("_"|LETTER) ("_"|LETTER|DIGIT)*
 %import common.NUMBER         # NUMBER: FLOAT | INT

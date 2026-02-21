@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 Span = Tuple[int, int]
 
@@ -13,6 +13,14 @@ class Number(Node):
 
 @dataclass(frozen=True)
 class Constant(Node):
+    name: str
+
+@dataclass(frozen=True)
+class X(Node):
+    pass
+
+@dataclass(frozen=True)
+class Var(Node):
     name: str
 
 @dataclass(frozen=True)
@@ -57,9 +65,10 @@ class FuncCall(Node):
     op: str
     args: List[Node]
 
-# @dataclass(frozen=True)
-# class Sum(Node):
-#     lo: Node
-#     hi: Node
-#     step: Optional[Node]
-#     expr: Node
+@dataclass(frozen=True)
+class Sum(Node):
+    var: str
+    lo: Node
+    hi: Node
+    step: Optional[Node]
+    expr: Node
